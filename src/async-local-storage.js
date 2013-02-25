@@ -169,6 +169,103 @@
       clearObjectStoreBacklog();
     });
   };
+  backlog.tail = new Future(function(r) { r.accept(); });
+  backlog.processItems = function(workIt) {
+    while (backlog.length) {
+      (function(item) {
+        var t = backlog.tail;
+        backlog.tail = t.then(function() {
+          return new Future(function(r) {
+            workIt(item, r);
+          })
+        });
+      })(backlog.shift());
+    }
+  };
+
+  var processItem = function(i, parentResolver) {
+    // If items are pushed while we're iterating, make sure we get 'em. Won't
+    // catch removals.
+    var resolver = i.resolver;
+    var item = i.item;
+    var op = item.operation;
+
+    // Kick off the operation with the provided callback/errback
+
+    // Prefer read-only for read ops so we can avoid locks
+    var trans = db.transaction([OBJ_STORE_NAME],
+                               (["get", "forEach"].indexOf(op) >= 0) ?
+                                   "readonly" : "readwrite");
+    // Get the Object Store via the Transaction
+    var store = trans.objectStore(OBJ_STORE_NAME);
+    var request = null;
+
+    switch(op) {
+      case "get":
+        request = store.get(item.key);
+        break;
+      case "set":
+        request = store.put(item.value, item.key);
+        break;
+      case "delete":
+        request = store.delete(item.key);
+        break;
+      case "clear":
+        // request = global.indexedDB.deleteDatabase(DB_NAME);
+        request = store.clear();
+        break;
+      case "count":
+        request = store.count();
+        break;
+      case "forEach":
+        // Open a cursor and iterate.
+        // TODO
+        request = store.openCursor();
+        request.onsuccess = function(evt) {
+          // Once the cursor is open, iterate.
+          var cursor = evt.target.result;
+          if (cursor) {
+            try {
+              callback(cursor.value, cursor.key);
+              cursor.continue();
+            } catch(e) {
+              resolver.reject(e);
+            }
+          } else {
+            // Finished
+            resolver.accept();
+          }
+        };
+        request.onerror = function(e) {
+          // console.error(e);
+          resolver.reject(e);
+        };
+        return;
+    }
+
+    if (!request) {
+      resovler.reject(new Error("IDB Request Failed"));
+      parentResolver.reject();
+      return;
+    }
+    request.onsuccess = function() {
+      // FIXME: do something nicer than setTimeout()
+      // Let the transaction close
+      setTimeout(function() {
+        resolver.resolve(request.result);
+        parentResolver.accept();
+      }, 1);
+    };
+    request.onerror = function(e) {
+      // FIXME: do something nicer than setTimeout()
+      // Let the transaction close
+      setTimeout(function() {
+        console.error(e);
+        resolver.reject(e);
+        parentResolver.accept();
+      }, 1);
+    };
+  };
 
   // Cribbed from:
   //   https://hacks.mozilla.org/2012/02/storing-images-and-files-in-indexeddb/
@@ -179,50 +276,7 @@
       return;
     }
 
-    backlog.forEach(function(i, idx, arr) {
-      // If items are pushed while we're iterating, make sure we get 'em. Won't
-      // catch removals.
-      var resolver = backlog[idx].resolver;
-      var item = backlog[idx].item;
-      var op = item.operation;
-
-      // Kick off the operation with the provided callback/errback
-
-      // Prefer read-only for read ops so we can avoid locks
-      var trans = db.transaction([OBJ_STORE_NAME],
-                                 (["get", "forEach"].indexOf(op) >= 0) ?
-                                     "readonly" : "readwrite");
-      // Get the Object Store via the Transaction
-      var store = trans.objectStore(OBJ_STORE_NAME);
-      var request = null;
-
-      switch(op) {
-        case "get":
-          request = store.get(item.key);
-          break;
-        case "set":
-          request = store.put(item.value, item.key);
-          break;
-        case "delete":
-          request = store.delete(item.key);
-          break;
-        case "forEach":
-          // Open a cursor and iterate.
-          // TODO
-          break;
-        case "clear":
-          request = store.clear();
-          break;
-      }
-
-      if (!request) {
-        resovler.reject(new Error("IDB Request Failed"));
-        return;
-      }
-      request.onsuccess = function() { resolver.resolve(request.result); };
-      request.onerror = function(e) { console.error(e); resolver.reject(e); };
-    });
-    backlog.length = 0;
+    backlog.processItems(processItem);
   };
 
 
@@ -246,18 +300,13 @@
     // create the object store.
     openRequest.onupgradeneeded = function (e) {
       db = e.target.result;
-
-      console.log("creating object store:", OBJ_STORE_NAME)
       db.createObjectStore(OBJ_STORE_NAME);
     };
 
     // We can only write once the DB is opened and upgraded/created. onsuccess
     // is always called after onupgradeneeded (if upgradeneeded is true).
     openRequest.onsuccess = function(e) {
-      console.log("database opened successfully");
       db = e.target.result;
-      console.log(db);
-
       objectStoreOpenForBusiness = true;
       clearObjectStoreBacklog();
     };
@@ -298,6 +347,10 @@
     "clear":
       methodValue(function() {
         return backlog.add({ operation: "clear" });
+      }),
+    "count":
+      methodValue(function() {
+        return backlog.add({ operation: "count" });
       }),
     "forEach":
       methodValue(function(callback) {
