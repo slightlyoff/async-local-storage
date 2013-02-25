@@ -279,7 +279,8 @@
     // of doing stuff here.
     "has":
       methodValue(function(key) {
-        return backlog.add({ operation: "get", key: key });
+        // FIXME: not actually returning a boolean!
+        return backlog.add({ operation: "get", key: key  });
       }),
     "set":
       methodValue(function(key, value) {
