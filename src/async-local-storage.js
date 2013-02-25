@@ -23,7 +23,7 @@
   //  there wasn't agreed terminology around Maps and Sets, but those errors are
   //  exascerbated by pure-crazytown JS API design; notably the behavior of
   //  .length and the addition of named getters (like JS objects used as maps
-  //  today) which makes the entire thing future hostile. .lenght is
+  //  today) which makes the entire thing future hostile. .length is
   //  particularly egregious. Not only is the collection not ordered -- can
   //  something without an order *have* a length? It could have some "size"
   //  across many dimensions, and absolutely could have a "count", but a length?
@@ -161,7 +161,6 @@
   var backlog = [];
   backlog.add = function(workItem) {
     // Push and return Future for the operation.
-    // FIXME: SLOT IN FUTURES HERE
     return new Future(function(resolver) {
       backlog.push({
         item: workItem,
