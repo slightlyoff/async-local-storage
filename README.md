@@ -9,6 +9,10 @@ The API is roughly mirrors the [ES6 Map type](http://tc39wiki.calculist.org/es6/
 [`Future`](https://github.com/slightlyoff/DOMFuture/) instances to enable async
 operation.
 
+To get started quickly, use one of the pre-built versions from the [`bin/`
+directory](https://github.com/slightlyoff/async-local-storage/tree/master/bin).
+To work from source, make sure you `git submodule update --init` after cloning.
+
 ## API
 
 The API lives at `navigator.storage` to distinguish it from
@@ -79,3 +83,12 @@ storage.forEach(function(value, key) {
 // The above is equivalent to using .count():
 storage.count().then(function(c) { console.log(c, "items in storage"); });
 ```
+
+## Browser Support
+
+This code is only meant to work on browsers with modern IndexedDB support and
+has been tested in stable-channel Chrome and Firefox as of Spring '13.
+
+## License
+
+Apache v2 License. See the [LICENSE file](https://github.com/slightlyoff/async-local-storage/blob/master/LICENSE).
