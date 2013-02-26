@@ -2,36 +2,42 @@ async-local-storage
 ===================
 
 This is a p(r)ollyfill for a fully-async object-storage API that's simpler than
-[IndexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB), but hopefully
-approachable for folks who are currently (ab)using
-[localStorage](https://developer.mozilla.org/en-US/docs/DOM/Storage) for large-
-object, early-in-page persistence.
+[IndexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB), but also async,
+removing many of the [performance hazards of `localStorage`](https://blog.mozilla.org/tglek/2012/02/22/psa-dom-local-storage-considered-harmful/).
 
-The API maps (har har) roughly to [EcmaScript 6 Maps and
-Sets](http://tc39wiki.calculist.org/es6/map-set/)
+The API is roughly mirrors the [ES6 Map type](http://tc39wiki.calculist.org/es6/map-set/), but all methods return
+[`Future`](https://github.com/slightlyoff/DOMFuture/) instances to enable async
+operation.
 
 ## API
 
-To distinguish it entirely from the synchronous `window.localStorage` and to
-prevent introducing a new global symbol, the API lives at `navigator.storage`.
-
-All methods return [`Future`s](https://github.com/slightlyoff/DOMFuture/)
+The API lives at `navigator.storage` to distinguish it from
+`window.localStorage` and to prevent introducing a new global symbol,
 
 ### Methods:
 
-#### `navigator.storage.has(/*string*/ key)`
+```js
+navigator.storage.has(/*string*/ key)
+    .then(function(bool) {});
 
-#### `navigator.storage.get(/*string*/ key)`
+navigator.storage.get(/*string*/ key)
+    .then(function(value) {});
 
-#### `navigator.storage.set(/*string*/ key, /*cloneable*/ value)`
+navigator.storage.set(/*string*/ key, /*cloneable*/ value)
+    .then(function() {});
 
-#### `navigator.storage.delete(/*string*/ key)`
+navigator.storage.delete(/*string*/ key)
+    .then(function() {});
 
-#### `navigator.storage.clear()`
+navigator.storage.clear()
+    .then(function() {});
 
-#### `navigator.storage.count()`
+navigator.storage.count()
+    .then(function(integer) {});
 
-#### `navigator.storage.forEach(/*function*/ callback, /*any*/ scope)`
+navigator.storage.forEach(/*function*/ callback, /*any*/ scope)
+    .then(function() {});
+```
 
 ## Examples
 
