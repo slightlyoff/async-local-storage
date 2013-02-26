@@ -151,54 +151,53 @@
   var OBJ_STORE_NAME = "als_objects";
   var VERSION = 1.0;
 
-  var onFailure = function(e) {
-    try {
-      console.error(e);
-    } catch(e2) {}
-  };
-
   var db = null;
-  var backlog = [];
+  var backlog = {};
+  backlog.tail = new Future(function(r) { r.accept(); });
   backlog.add = function(workItem) {
     // Push and return Future for the operation.
-    return new Future(function(resolver) {
-      backlog.push({
-        item: workItem,
-        resolver: resolver
-      });
-      clearObjectStoreBacklog();
-    });
-  };
-  backlog.tail = new Future(function(r) { r.accept(); });
-  backlog.processItems = function(workIt) {
-    while (backlog.length) {
-      (function(item) {
-        var t = backlog.tail;
-        backlog.tail = t.then(function() {
-          return new Future(function(r) {
-            workIt(item, r);
-          })
+    var t = backlog.tail;
+    var runNext = function() {
+      return open().then(function() {
+        var f = new Future(function(r) {
+          processItem(workItem, r);
         });
-      })(backlog.shift());
-    }
+        // Ensure that errors don't propigate across items
+        return new Future(function(r2) {
+          var a = r2.accept.bind(r2);
+          f.done(a, a);
+        });
+      });
+    };
+    return backlog.tail = t.then(runNext, runNext);
   };
 
-  var processItem = function(i, parentResolver) {
-    // If items are pushed while we're iterating, make sure we get 'em. Won't
-    // catch removals.
-    var resolver = i.resolver;
-    var item = i.item;
+  var identity = function(v) { return v; };
+  var processItem = function(item, resolver) {
     var op = item.operation;
-
-    // Kick off the operation with the provided callback/errback
-
+    var xform = item.transform || identity;
     // Prefer read-only for read ops so we can avoid locks
+    // FIXME(slightlyoff): See below. We're yeidling anyway, so this only
+    //    benefits cross-tab reads.
     var trans = db.transaction([OBJ_STORE_NAME],
                                (["get", "forEach"].indexOf(op) >= 0) ?
                                    "readonly" : "readwrite");
     // Get the Object Store via the Transaction
     var store = trans.objectStore(OBJ_STORE_NAME);
     var request = null;
+    // FIXME(slightlyoff): it appears that for write ops we MUST use setTimeout.
+    // We can probably do better if our last op was a read and we're a read, but
+    // if we're following a write, we must yeild entirely. *sigh*
+    var resolve = function(value) {
+      setTimeout(function() {
+        resolver.resolve(xform(value));
+      }, 1);
+    };
+    var reject = function(reason) {
+      setTimeout(function() {
+        resolver.reject(reason);
+      }, 1);
+    };
 
     switch(op) {
       case "get":
@@ -214,6 +213,9 @@
         // request = global.indexedDB.deleteDatabase(DB_NAME);
         request = store.clear();
         break;
+      case "has":
+        request = store.count(item.key);
+        break;
       case "count":
         request = store.count();
         break;
@@ -226,63 +228,38 @@
           var cursor = evt.target.result;
           if (cursor) {
             try {
-              callback(cursor.value, cursor.key);
+              item.callback.call(item.scope||null, cursor.value, cursor.key);
               cursor.continue();
             } catch(e) {
-              resolver.reject(e);
+              reject(e);
             }
           } else {
             // Finished
-            resolver.accept();
+            resolve();
           }
         };
-        request.onerror = function(e) {
-          // console.error(e);
-          resolver.reject(e);
-        };
+        request.onerror = reject;
         return;
     }
 
     if (!request) {
-      resovler.reject(new Error("IDB Request Failed"));
-      parentResolver.reject();
+      reject(new Error("IDB Request Failed"));
       return;
     }
     request.onsuccess = function() {
-      // FIXME: do something nicer than setTimeout()
-      // Let the transaction close
-      setTimeout(function() {
-        resolver.resolve(request.result);
-        parentResolver.accept();
-      }, 1);
+      resolve(request.result);
     };
     request.onerror = function(e) {
-      // FIXME: do something nicer than setTimeout()
-      // Let the transaction close
-      setTimeout(function() {
-        console.error(e);
-        resolver.reject(e);
-        parentResolver.accept();
-      }, 1);
+      console.error(e);
+      reject(e);
     };
   };
 
-  // Cribbed from:
-  //   https://hacks.mozilla.org/2012/02/storing-images-and-files-in-indexeddb/
-  var objectStoreOpenForBusiness = false;
-  var clearObjectStoreBacklog = function() {
-    if (!objectStoreOpenForBusiness) {
-      open();
-      return;
-    }
-
-    backlog.processItems(processItem);
-  };
-
-
   var openCalled = false;
+  var openResolver;
+  var openFuture = new Future(function(r) { openResolver = r; });
   var open = function() {
-    if (openCalled) return;
+    if (openCalled) return openFuture;
     openCalled = true;
     // Cribbed from Paul Kinlan's HTML5 Rocks article:
     //    http://www.html5rocks.com/en/tutorials/indexeddb/todo/
@@ -307,10 +284,10 @@
     // is always called after onupgradeneeded (if upgradeneeded is true).
     openRequest.onsuccess = function(e) {
       db = e.target.result;
-      objectStoreOpenForBusiness = true;
-      clearObjectStoreBacklog();
+      openResolver.resolve(e);
     };
-    openRequest.onfailure = onFailure;
+    openRequest.onfailure = openResolver.reject.bind(openResolver);
+    return openFuture;
   };
 
   var methodValue = function(func) {
@@ -328,7 +305,11 @@
     "has":
       methodValue(function(key) {
         // FIXME: not actually returning a boolean!
-        return backlog.add({ operation: "get", key: key  });
+        return backlog.add({
+          operation: "has",
+          key: key,
+          transform: function(value) { return !!value; }
+        });
       }),
     "set":
       methodValue(function(key, value) {
@@ -353,13 +334,14 @@
         return backlog.add({ operation: "count" });
       }),
     "forEach":
-      methodValue(function(callback) {
+      methodValue(function(callback, scope) {
         // FIXME: this doesn't match the semantic for the spec! Our future needs
         // to only resolve once we're at the end!
         return backlog.add({ operation: "forEach",
                              callback: function(key, value) {
                                 callback(key, value, navigator.storage);
-                             }
+                             },
+                             scope: scope
                            });
       }),
   });

@@ -29,7 +29,9 @@ All methods return [`Future`s](https://github.com/slightlyoff/DOMFuture/)
 
 #### `navigator.storage.clear()`
 
-#### `navigator.storage.forEach(/*function*/ callback)`
+#### `navigator.storage.count()`
+
+#### `navigator.storage.forEach(/*function*/ callback, /*any*/ scope)`
 
 ## Examples
 
@@ -67,4 +69,7 @@ var itemCount = 0;
 storage.forEach(function(value, key) {
   itemCount++;
 }).then(function() { console.log(itemCount, "items in storage"); });
+
+// The above is equivalent to using .count():
+storage.count().then(function(c) { console.log(c, "items in storage"); });
 ```
