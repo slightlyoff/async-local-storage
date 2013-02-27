@@ -175,12 +175,28 @@
   var identity = function(v) { return v; };
   var trans;
   var store;
+  var clearTrans = function() { trans = null; store = null; };
+  // See comments below for why this terrible, terrible thing is necessary
+  var isFF = (navigator.userAgent.indexOf("Gecko/201") >= 0);
+
   var processItem = function(item, resolver) {
     var op = item.operation;
     var xform = item.transform || identity;
     // Prefer read-only for read ops so we can avoid locks
     // FIXME(slightlyoff): See below. We're yeidling anyway, so this only
     //    benefits cross-tab reads.
+
+    // If we're in FF, we need to make sure that it's not incorrectly letting us
+    // work off a stale TXN. To know if it's delivering incorrectly, we need to
+    // get an exception. This doesn't appear on the first operation, only
+    // subsequent ones. What a cluster-fuck.
+    if (isFF && trans && store) {
+      try {
+        store.count();
+      } catch(e) {
+        clearTrans();
+      }
+    }
     if (!trans) {
       // FIXME(slighlyoff): We're using "readwrite" here to avoid creating
       // "readonly" transactions which might later include operaitons that
@@ -190,20 +206,19 @@
       // complexity ATM, b ut we'll see how it scales and adjust accordingly.
       trans = db.transaction([OBJ_STORE_NAME], "readwrite");
       /*
-      trans = db.transaction([OBJ_STORE_NAME], "readwrite");
+      trans = db.transaction([OBJ_STORE_NAME],
                                  (["get", "forEach"].indexOf(op) >= 0) ?
                                      "readonly" : "readwrite");
       */
       // Get the Object Store via the Transaction
       store = trans.objectStore(OBJ_STORE_NAME);
 
-      trans.onabort =
-      trans.onerror =
-      trans.oncomplete = function() {
-        trans = null;
-        store = null;
-      };
+      // Ensure that we re-open a transaction whenever the last one closes
+      trans.onabort = trans.onerror = trans.oncomplete = clearTrans;
     }
+
+    // console.log("doing a:", op);
+    // console.log("with txn:", trans, "and store:", store);
     var request = null;
     // FIXME(slightlyoff): it appears that for write ops we MUST use setTimeout.
     // We can probably do better if our last op was a read and we're a read, but

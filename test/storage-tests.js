@@ -154,6 +154,27 @@ t.registerGroup("async-local-storage", [
     });
     return d;
   },
+
+  function blob_storage() {
+    var d = new doh.Deferred();
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "test.html", true);
+    xhr.responseType = "blob";
+    xhr.send();
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState == 4) {
+        // TODOC(slightlyoff):
+        //    Does not pass in Chrome, IDB fails on Blobs!
+        storage.set("blob", xhr.response).then(function() {
+          return storage.get("blob").then(function(value) {
+            t.t(value instanceof Blob);
+            d.callback();
+          }, log);
+        }, log);
+      }
+    };
+    return d;
+  },
 ], deleteDb, deleteDb);
 
 })();
