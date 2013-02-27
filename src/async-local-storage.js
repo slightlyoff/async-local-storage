@@ -173,31 +173,43 @@
   };
 
   var identity = function(v) { return v; };
+  var trans;
+  var store;
   var processItem = function(item, resolver) {
     var op = item.operation;
     var xform = item.transform || identity;
     // Prefer read-only for read ops so we can avoid locks
     // FIXME(slightlyoff): See below. We're yeidling anyway, so this only
     //    benefits cross-tab reads.
-    var trans = db.transaction([OBJ_STORE_NAME],
-                               (["get", "forEach"].indexOf(op) >= 0) ?
-                                   "readonly" : "readwrite");
-    // Get the Object Store via the Transaction
-    var store = trans.objectStore(OBJ_STORE_NAME);
+    if (!trans) {
+      // FIXME(slighlyoff): We're using "readwrite" here to avoid creating
+      // "readonly" transactions which might later include operaitons that
+      // want to write. The right thing to do would be to serialize a write op
+      // that follows read ops into its own txn, using oncomplete of the
+      // previous to open up a new one. Not sure I want to introduce that much
+      // complexity ATM, b ut we'll see how it scales and adjust accordingly.
+      trans = db.transaction([OBJ_STORE_NAME], "readwrite");
+      /*
+      trans = db.transaction([OBJ_STORE_NAME], "readwrite");
+                                 (["get", "forEach"].indexOf(op) >= 0) ?
+                                     "readonly" : "readwrite");
+      */
+      // Get the Object Store via the Transaction
+      store = trans.objectStore(OBJ_STORE_NAME);
+
+      trans.onabort =
+      trans.onerror =
+      trans.oncomplete = function() {
+        trans = null;
+        store = null;
+      };
+    }
     var request = null;
     // FIXME(slightlyoff): it appears that for write ops we MUST use setTimeout.
     // We can probably do better if our last op was a read and we're a read, but
     // if we're following a write, we must yeild entirely. *sigh*
-    var resolve = function(value) {
-      setTimeout(function() {
-        resolver.resolve(xform(value));
-      }, 1);
-    };
-    var reject = function(reason) {
-      setTimeout(function() {
-        resolver.reject(reason);
-      }, 1);
-    };
+    var resolve = function(value) { resolver.resolve(xform(value)); };
+    var reject = function(reason) { resolver.reject(reason); };
 
     switch(op) {
       case "get":
