@@ -114,7 +114,8 @@
   //    //
   //    // Usage:
   //    //
-  //    var storage = navigator.storage; // New API, new object
+  //    var storage = navigator.storage ||          // New API, new object
+  //                  navigator.alsPolyfillStorage; // Where the polyfill lives
   //
   //    storage.has(key).then(function(bool) { ... });
   //
@@ -326,7 +327,7 @@
     };
   };
 
-  navigator.storage = Object.create(null, {
+  var storage = navigator.alsPolyfillStorage = Object.create(null, {
     // Run everything through the backlog queue and just turn the crank instead
     // of doing stuff here.
     "has":
@@ -366,7 +367,7 @@
         // to only resolve once we're at the end!
         return backlog.add({ operation: "forEach",
                              callback: function(key, value) {
-                                callback(key, value, navigator.storage);
+                                callback(key, value, storage);
                              },
                              scope: scope
                            });

@@ -6,7 +6,7 @@ var deleteDb = function() {
 };
 
 var t = doh;
-var storage = navigator.storage;
+var storage = navigator.alsPolyfillStorage;
 var log = console.log.bind(console);
 
 t.registerGroup("async-local-storage", [
@@ -157,6 +157,7 @@ t.registerGroup("async-local-storage", [
 
   function blob_storage() {
     var d = new doh.Deferred();
+    // WTF...YUNO "new Blob()", web platform!?!
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "test.html", true);
     xhr.responseType = "blob";
@@ -170,7 +171,7 @@ t.registerGroup("async-local-storage", [
             t.t(value instanceof Blob);
             d.callback();
           }, log);
-        }, log);
+        }, function(e) { d.errback(e); });
       }
     };
     return d;

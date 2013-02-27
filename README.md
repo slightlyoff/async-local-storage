@@ -21,32 +21,36 @@ The API lives at `navigator.storage` to distinguish it from
 ### Methods:
 
 ```js
-navigator.storage.has(/*string*/ key)
+var storage = navigator.storage ||          // New API, new object
+              navigator.alsPolyfillStorage; // Where the polyfill lives
+
+storage.has(/*string*/ key)
     .then(function(bool) {});
 
-navigator.storage.get(/*string*/ key)
+storage.get(/*string*/ key)
     .then(function(value) {});
 
-navigator.storage.set(/*string*/ key, /*cloneable*/ value)
+storage.set(/*string*/ key, /*cloneable*/ value)
     .then(function() {});
 
-navigator.storage.delete(/*string*/ key)
+storage.delete(/*string*/ key)
     .then(function() {});
 
-navigator.storage.clear()
+storage.clear()
     .then(function() {});
 
-navigator.storage.count()
+storage.count()
     .then(function(integer) {});
 
-navigator.storage.forEach(/*function*/ callback, /*any*/ scope)
+storage.forEach(/*function*/ callback, /*any*/ scope)
     .then(function() {});
 ```
 
 ## Examples
 
 ```js
-var storage = navigator.storage;
+var storage = navigator.storage ||
+              navigator.alsPolyfillStorage;
 
 // Testing for a value
 storage.has("thinger").then(function(doesHaveThinger) {
