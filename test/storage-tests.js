@@ -160,7 +160,7 @@ t.registerGroup("async-local-storage", [
     var deepCloneable = {
       "key with spaces": true,
       "key with object value": { thinger: "blarg" },
-      "key with integer value": 12
+      "key with integer value": 12,
     };
     storage.clear().then(function() {
       return storage.set("cloneable", deepCloneable);
