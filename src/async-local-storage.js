@@ -178,7 +178,7 @@
   var store;
   var clearTrans = function() { trans = null; store = null; };
   // See comments below for why this terrible, terrible thing is necessary
-  var isFF = (navigator.userAgent.indexOf("Gecko/201") >= 0);
+  var isFF = (navigator.userAgent.match(/Firefox\/\d+(\.\d+)/) instanceof Array);
 
   var processItem = function(item, resolver) {
     var op = item.operation;
