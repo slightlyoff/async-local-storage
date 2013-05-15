@@ -9,7 +9,18 @@ var t = doh;
 var storage = navigator.alsPolyfillStorage;
 var log = console.log.bind(console);
 
-t.registerGroup("async-local-storage", [
+var async = function(desc, test) {
+  return {
+    name: desc,
+    runTest: function() {
+      var d = new doh.Deferred();
+      test(d, d.callback.bind(d), d.errback.bind(d));
+      return d;
+    }
+  };
+};
+
+t.add("async-local-storage", [
   function sanity() {
     t.is("object",   typeof storage);
     t.is("function", typeof storage.has);
@@ -19,22 +30,17 @@ t.registerGroup("async-local-storage", [
     t.is("function", typeof storage.forEach);
   },
 
-  function clear() {
-    var d = new doh.Deferred();
+  async("clear", function(d) {
     storage.clear().done(function() { d.callback(); });
-    return d;
-  },
+  }),
 
-  function set() {
-    var d = new doh.Deferred();
+  async("set", function(d) {
     storage.set("foo", "bar").
       then(storage.get.bind(storage, "foo")).
       done(d.callback.bind(d));
-    return d;
-  },
+  }),
 
-  function clear_with_items() {
-    var d = new doh.Deferred();
+  async("clear with items", function(d) {
     storage.set("foo", "bar").
       then(function() {
         storage.has("foo").done(function(v) {
@@ -49,11 +55,9 @@ t.registerGroup("async-local-storage", [
           });
         });
       });
-    return d;
-  },
+  }),
 
-  function get() {
-    var d = new doh.Deferred();
+  async("get", function(d) {
     var key = "thinger";
     var value = "blarg";
     storage.set(key, value).then(function() {
@@ -62,11 +66,9 @@ t.registerGroup("async-local-storage", [
         d.callback();
       });
     });
-    return d;
-  },
+  }),
 
-  function has() {
-    var d = new doh.Deferred();
+  async("has", function(d) {
     var key = "thinger";
     var value = "blarg";
     storage.clear().done(function() {
@@ -84,11 +86,9 @@ t.registerGroup("async-local-storage", [
         });
       });
     });
-    return d;
-  },
+  }),
 
-  function del() {
-    var d = new doh.Deferred();
+  async("delete", function(d) {
     var key = "thinger";
     var value = "blarg";
     storage.clear().done(function() {
@@ -107,11 +107,9 @@ t.registerGroup("async-local-storage", [
         });
       });
     });
-    return d;
-  },
+  }),
 
-  function forEach() {
-    var d = new doh.Deferred();
+  async("forEach", function(d) {
     storage.clear().then(function() {
       storage.set("foo", "bar");
       return storage.set("thinger", "blarg");
@@ -128,11 +126,9 @@ t.registerGroup("async-local-storage", [
         d.callback();
       });
     });
-    return d;
-  },
+  }),
 
-  function forEachThrows() {
-    var d = new doh.Deferred();
+  async("forEach stops on exception", function(d) {
     storage.clear().then(function() {
       storage.set("foo", "bar");
       return storage.set("thinger", "blarg");
@@ -162,11 +158,9 @@ t.registerGroup("async-local-storage", [
         console.error.bind(console)
       );
     });
-    return d;
-  },
+  }),
 
-  function deep_cloneable_object() {
-    var d = new doh.Deferred();
+  async("correctly store deep cloneable objects", function(d) {
     var deepCloneable = {
       "key with spaces": true,
       "key with object value": { thinger: "blarg" },
@@ -180,11 +174,9 @@ t.registerGroup("async-local-storage", [
       t.is(deepCloneable, value);
       d.callback();
     });
-    return d;
-  },
+  }),
 
-  function blob_storage() {
-    var d = new doh.Deferred();
+  async("correctly stores blobs", function(d) {
     // WTF...YUNO "new Blob()", web platform!?!
     var xhr = new XMLHttpRequest();
     xhr.open("GET", "test.html", true);
@@ -202,8 +194,7 @@ t.registerGroup("async-local-storage", [
         }, function(e) { d.errback(e); });
       }
     };
-    return d;
-  },
+  }),
 ], deleteDb, deleteDb);
 
 })();
