@@ -137,20 +137,30 @@ t.registerGroup("async-local-storage", [
       storage.set("foo", "bar");
       return storage.set("thinger", "blarg");
     }).then(function() {
-      return storage.count().then(function(c) {
+
+      return storage.count().done(function(c) {
         t.is(2, c);
       });
-    }).then(function() {
-      return storage.forEach(function() {
-        throw new Error("synthetic");
-      }).catch(function(e) {
-        t.t(e instanceof Error);
-      }).then(function() {
-        storage.get("foo").done(function(v) {
-          t.is("bar", v);
-          d.callback();
-        });
-      });
+
+    }).then(function(c) {
+
+      return storage.forEach(
+        function(value, key) {
+          throw new Error("synthetic");
+        }
+      ).catch(
+        function(e) {
+          t.t(e instanceof Error);
+        }
+      ).done(
+        function(value) {
+          storage.get("foo").done(function(v) {
+            t.is("bar", v);
+            d.callback();
+          });
+        },
+        console.error.bind(console)
+      );
     });
     return d;
   },

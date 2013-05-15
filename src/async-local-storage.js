@@ -155,7 +155,7 @@
   var db = null;
   var backlog = {};
   backlog.tail = new Future(function(r) { r.accept(); });
-  backlog.add = function(workItem) {
+  backlog.add = function(workItem, canFail) {
     // Push and return Future for the operation.
     var t = backlog.tail;
     var runNext = function() {
@@ -163,6 +163,9 @@
         var f = new Future(function(r) {
           processItem(workItem, r);
         });
+        if (canFail === true) {
+          return f;
+        }
         // Ensure that errors don't propigate across items
         return new Future(function(r2) {
           var a = r2.accept.bind(r2);
@@ -249,7 +252,6 @@
         break;
       case "forEach":
         // Open a cursor and iterate.
-        // TODO
         request = store.openCursor();
         request.onsuccess = function(evt) {
           // Once the cursor is open, iterate.
@@ -257,17 +259,18 @@
           if (cursor) {
             try {
               item.callback.call(item.scope||null, cursor.value, cursor.key);
-              cursor.continue();
             } catch(e) {
               reject(e);
+              return; // Stop iterating.
             }
+            cursor.continue();
           } else {
             // Finished
             resolve();
           }
         };
         request.onerror = reject;
-        return;
+        return; // Avoid registering the default handlers on the request
     }
 
     if (!request) {
@@ -277,10 +280,13 @@
     request.onsuccess = function() {
       resolve(request.result);
     };
+    request.onerror = reject;
+    /*
     request.onerror = function(e) {
       console.error(e);
       reject(e);
     };
+    */
   };
 
   var openCalled = false;
@@ -370,7 +376,7 @@
                                 callback(key, value, storage);
                              },
                              scope: scope
-                           });
+                           }, true);
       }),
   });
 })(this, this.navigator||{});
