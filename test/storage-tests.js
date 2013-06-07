@@ -8,6 +8,7 @@ var deleteDb = function() {
 var t = doh;
 var storage = navigator.alsPolyfillStorage;
 var log = console.log.bind(console);
+log(storage);
 
 var async = function(desc, test) {
   return {
@@ -31,23 +32,23 @@ t.add("async-local-storage", [
   },
 
   async("clear", function(d) {
-    storage.clear().done(function() { d.callback(); });
+    storage.clear().then(function() { d.callback(); });
   }),
 
   async("set", function(d) {
     storage.set("foo", "bar").
       then(storage.get.bind(storage, "foo")).
-      done(d.callback.bind(d));
+      then(d.callback.bind(d));
   }),
 
   async("clear with items", function(d) {
     storage.set("foo", "bar").
       then(function() {
-        storage.has("foo").done(function(v) {
+        storage.has("foo").then(function(v) {
           t.t(!!v);
           storage.clear().then(function() {
             storage.count().then(function(c) {
-              storage.has("foo").done(function(value) {
+              storage.has("foo").then(function(value) {
                 t.is(false, value);
                 d.callback();
               });
@@ -61,7 +62,7 @@ t.add("async-local-storage", [
     var key = "thinger";
     var value = "blarg";
     storage.set(key, value).then(function() {
-      storage.get(key).done(function(v) {
+      storage.get(key).then(function(v) {
         t.is(value, v);
         d.callback();
       });
@@ -71,15 +72,15 @@ t.add("async-local-storage", [
   async("has", function(d) {
     var key = "thinger";
     var value = "blarg";
-    storage.clear().done(function() {
+    storage.clear().then(function() {
       storage.set(key, value).then(function() {
-        storage.has(key).done(function(v) {
+        storage.has(key).then(function(v) {
           t.is("boolean", typeof v);
           t.is(true, v);
         });
       }).
       then(function() {
-        storage.has("thing that doesn't exist").done(function(v) {
+        storage.has("thing that doesn't exist").then(function(v) {
           t.is("boolean", typeof v);
           t.is(false, v);
           d.callback();
@@ -91,16 +92,16 @@ t.add("async-local-storage", [
   async("delete", function(d) {
     var key = "thinger";
     var value = "blarg";
-    storage.clear().done(function() {
+    storage.clear().then(function() {
       storage.set(key, value).then(function() {
-        storage.has(key).done(function(v) {
+        storage.has(key).then(function(v) {
           t.is("boolean", typeof v);
           t.is(true, v);
         });
       }).
       then(function() { return storage.delete(key); }).
       then(function() {
-        storage.has(key).done(function(v) {
+        storage.has(key).then(function(v) {
           t.is("boolean", typeof v);
           t.is(false, v);
           d.callback();
@@ -134,7 +135,7 @@ t.add("async-local-storage", [
       return storage.set("thinger", "blarg");
     }).then(function() {
 
-      return storage.count().done(function(c) {
+      return storage.count().then(function(c) {
         t.is(2, c);
       });
 
@@ -148,9 +149,9 @@ t.add("async-local-storage", [
         function(e) {
           t.t(e instanceof Error);
         }
-      ).done(
+      ).then(
         function(value) {
-          storage.get("foo").done(function(v) {
+          storage.get("foo").then(function(v) {
             t.is("bar", v);
             d.callback();
           });

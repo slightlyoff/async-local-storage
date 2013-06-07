@@ -70,14 +70,14 @@
   //
   //  So what about async?
   //
-  //  One possible design is to simply return a Future whenever a callback is
+  //  One possible design is to simply return a Promise whenever a callback is
   //  provided; e.g.:
   //
   //    // Callback version of getItem returns a thenable instead:
   //    localStorage.getItem("key",
   //                         function(value) {
   //                           // Enable chaining on our operation
-  //                           return new Future(function(r) {
+  //                           return new Promise(function(r) {
   //                             // Do something async with the value here
   //                           });
   //                         },
@@ -119,24 +119,24 @@
   //
   //    storage.has(key).then(function(bool) { ... });
   //
-  //    // Read and write operations are always async, returns are Futures
+  //    // Read and write operations are always async, returns are Promises
   //    storage.set(key, value).then(
   //      function(value) { ... },
   //      fucntion(error) { ... }
   //    );
-  //    storage.get(key).done(function(value) { ... });
+  //    storage.get(key).then(function(value) { ... });
   //
   //    // Note that this is an iterator that fetches *keys() asynchronously and
-  //    // returns a Future that resolves upon completion of all callbacks. It's
-  //    // TBD if this should behave like the proposed Future.when():
-  //    //   https://github.com/slightlyoff/DOMFuture/issues/16
-  //    // E.g., should we assume that callbacks can return Futures and/or wrap
+  //    // returns a Promise that resolves upon completion of all callbacks. It's
+  //    // TBD if this should behave like the proposed Promise.when():
+  //    //   https://github.com/slightlyoff/DOMPromise/issues/16
+  //    // E.g., should we assume that callbacks can return Promises and/or wrap
   //    // return values the way .then() does?
   //    storage.forEach(function(key, value, storage) {
   //     ...
   //    }).then(onAllItemsProcessed, onError);
   //
-  //    storage.clear().done(function()      { ... },
+  //    storage.clear().then(function()      { ... },
   //                         function(error) { ... });
 
 
@@ -154,23 +154,23 @@
 
   var db = null;
   var backlog = {};
-  backlog.tail = new Future(function(r) { r.accept(); });
+  backlog.tail = new Promise(function(r) { r.fulfill(); });
   backlog.add = function(workItem, canFail) {
-    // Push and return Future for the operation.
+    // Push and return Promise for the operation.
     var t = backlog.tail;
     var runNext = function() {
       return open().then(function() {
-        var f = new Future(function(r) {
+        var f = new Promise(function(r) {
           processItem(workItem, r);
         });
         if (canFail === true) {
           return f;
         }
         // Ensure that errors don't propigate across items
-        return new Future(function(r2) {
-          var a = r2.accept.bind(r2);
+        return new Promise(function(r2) {
+          var a = r2.fulfill.bind(r2);
           setTimeout(function() {
-            f.done(a, a);
+            f.then(a, a);
           }, 1)
         });
       });
@@ -297,9 +297,9 @@
 
   var openCalled = false;
   var openResolver;
-  var openFuture = new Future(function(r) { openResolver = r; });
+  var openPromise = new Promise(function(r) { openResolver = r; });
   var open = function() {
-    if (openCalled) return openFuture;
+    if (openCalled) return openPromise;
     openCalled = true;
     // Cribbed from Paul Kinlan's HTML5 Rocks article:
     //    http://www.html5rocks.com/en/tutorials/indexeddb/todo/
@@ -327,7 +327,7 @@
       openResolver.resolve(e);
     };
     openRequest.onfailure = openResolver.reject.bind(openResolver);
-    return openFuture;
+    return openPromise;
   };
 
   var methodValue = function(func) {
