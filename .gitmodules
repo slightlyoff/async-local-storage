@@ -1,3 +1,6 @@
 [submodule "third_party/DOMFuture"]
 	path = third_party/DOMFuture
 	url = git://github.com/slightlyoff/DOMFuture.git
+[submodule "third_party/Promises"]
+	path = third_party/Promises
+	url = git://github.com/slightlyoff/Promises.git
