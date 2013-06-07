@@ -169,7 +169,9 @@
         // Ensure that errors don't propigate across items
         return new Future(function(r2) {
           var a = r2.accept.bind(r2);
-          f.done(a, a);
+          setTimeout(function() {
+            f.done(a, a);
+          }, 1)
         });
       });
     };
@@ -179,7 +181,9 @@
   var identity = function(v) { return v; };
   var trans;
   var store;
-  var clearTrans = function() { trans = null; store = null; };
+  var clearTrans = function() {
+    trans = null; store = null;
+  };
   // See comments below for why this terrible, terrible thing is necessary
   var isFF = (navigator.userAgent.match(/Firefox\/\d+(\.\d+)/) instanceof Array);
 
@@ -198,6 +202,8 @@
       try {
         store.count();
       } catch(e) {
+        console.log("  store.count failed = (");
+        console.log("  clearTrans();")
         clearTrans();
       }
     }

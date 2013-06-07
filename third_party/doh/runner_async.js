@@ -707,6 +707,7 @@ doh._runFixture = function(groupName, fixture){
 		if(fixture["setUp"]){ fixture.setUp(this); }
 		if(fixture["runTest"]){  // should we error out of a fixture doesn't have a runTest?
 			fixture.startTime = new Date();
+			console.log(fixture.name);
 			var ret = fixture.runTest(this);
 			fixture.endTime = new Date();
 			// if we get a deferred back from the test runner, we know we're
