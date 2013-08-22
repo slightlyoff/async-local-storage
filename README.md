@@ -6,7 +6,7 @@ This is a p(r)ollyfill for a fully-async object-storage API that's simpler than
 removing many of the [performance hazards of `localStorage`](https://blog.mozilla.org/tglek/2012/02/22/psa-dom-local-storage-considered-harmful/).
 
 The API is roughly mirrors the [ES6 Map type](http://tc39wiki.calculist.org/es6/map-set/), but all methods return
-[`Future`](https://github.com/slightlyoff/DOMFuture/) instances to enable async
+[`Promise`](https://github.com/slightlyoff/DOMFuture/) instances to enable async
 operation.
 
 To get started quickly, use one of the pre-built versions from the [`bin/`
@@ -77,7 +77,7 @@ storage.set("thinger", "othervalue").then(function() {
   });
 });
 
-// Iteration is also async. The returned Future resolves when the passed
+// Iteration is also async. The returned Promise resolves when the passed
 // callback has been invoked for each item (or when one fails, in case of error)
 var itemCount = 0;
 storage.forEach(function(value, key) {
