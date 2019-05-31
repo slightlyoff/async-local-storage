@@ -3,7 +3,7 @@ async-local-storage
 
 This is a p(r)ollyfill for a fully-async object-storage API that's simpler than
 [IndexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB), but also async,
-removing many of the [performance hazards of `localStorage`](https://blog.mozilla.org/tglek/2012/02/22/psa-dom-local-storage-considered-harmful/).
+removing many of the [performance hazards of `localStorage`](https://web.archive.org/web/20160519152301/https://blog.mozilla.org/tglek/2012/02/22/psa-dom-local-storage-considered-harmful/).
 
 The API is roughly mirrors the [ES6 Map type](http://tc39wiki.calculist.org/es6/map-set/), but all methods return
 [`Future`](https://github.com/slightlyoff/DOMFuture/) instances to enable async
